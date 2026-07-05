@@ -78,7 +78,7 @@ function ParticleField({
     const { blue, lime } = themeColors(isLightTheme());
 
     for (let i = 0; i < count; i++) {
-      const r = 4 + Math.random() * 5;
+      const r = 2.6 + Math.random() * 3;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       base[i * 3] = r * Math.sin(phi) * Math.cos(theta);
@@ -210,7 +210,7 @@ function FloatingMarks({
     const total = isMobile ? 3 : 6;
     return Array.from({ length: total }, (_, i) => {
       const angle = (i / total) * Math.PI * 2 + Math.random() * 0.6;
-      const radius = 4.2 + Math.random() * 1.6;
+      const radius = 3.7 + Math.random() * 1.1;
       return {
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius * 0.7,
