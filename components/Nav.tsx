@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Menu, Moon, Sun, X } from "lucide-react";
 import { ScrollTrigger } from "@/lib/gsap";
 import { useTheme } from "./ThemeProvider";
+import { CtaButton } from "./CtaButton";
 
 const NAV_LINKS = [
   { href: "#why", label: "Why" },
@@ -99,9 +100,9 @@ export function Nav() {
               )}
             </button>
 
-            <a href="#start" className="btn-primary hidden sm:inline-flex text-sm !py-3 !px-5">
+            <CtaButton className="btn-primary hidden sm:inline-flex text-sm !py-3 !px-5">
               Start a project
-            </a>
+            </CtaButton>
 
             <button
               type="button"
@@ -130,13 +131,12 @@ export function Nav() {
             {link.label}
           </a>
         ))}
-        <a
-          href="#start"
+        <CtaButton
           className="btn-primary"
           onClick={() => setMobileOpen(false)}
         >
           Start a project
-        </a>
+        </CtaButton>
       </div>
     </>
   );

@@ -4,11 +4,58 @@ import { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
+// CTRLDONE brand palette — blue ring + lime checkmark, matching the logo.
 const DARK_BLUE = new THREE.Color("#5B6EF3");
 const DARK_LIME = new THREE.Color("#D6EE3C");
-const DARK_ASH = new THREE.Color("#7C8494");
+const LIGHT_BLUE = new THREE.Color("#4459E0");
 const LIGHT_LIME = new THREE.Color("#B8CE1E");
-const LIGHT_ASH = new THREE.Color("#8A93A3");
+
+function themeColors(isLight: boolean) {
+  return {
+    blue: isLight ? LIGHT_BLUE : DARK_BLUE,
+    lime: isLight ? LIGHT_LIME : DARK_LIME,
+  };
+}
+
+function isLightTheme() {
+  return (
+    typeof document !== "undefined" &&
+    document.documentElement.getAttribute("data-theme") === "light"
+  );
+}
+
+/**
+ * Canvas texture of the CTRLDONE mark (blue ring + lime check) used for the
+ * favicon sprites that float around the control ring.
+ */
+function makeMarkTexture(): THREE.CanvasTexture {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const c = size / 2;
+
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "#5B6EF3";
+  ctx.beginPath();
+  ctx.arc(c, c, 44, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#D6EE3C";
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(42, 66);
+  ctx.lineTo(58, 82);
+  ctx.lineTo(88, 46);
+  ctx.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = 2;
+  return texture;
+}
 
 function ParticleField({
   progressRef,
@@ -20,14 +67,15 @@ function ParticleField({
   isMobile: boolean;
 }) {
   const count = isMobile ? 1000 : 2500;
-  const includeCheckmark = !isMobile;
   const pointsRef = useRef<THREE.Points>(null!);
-  const materialRef = useRef<THREE.PointsMaterial>(null!);
 
-  const [basePositions, targetPositions] = useMemo(() => {
+  const ringCount = Math.floor(count * 0.82);
+
+  const [basePositions, targetPositions, baseColors] = useMemo(() => {
     const base = new Float32Array(count * 3);
     const target = new Float32Array(count * 3);
-    const ringCount = includeCheckmark ? Math.floor(count * 0.85) : count;
+    const colors = new Float32Array(count * 3);
+    const { blue, lime } = themeColors(isLightTheme());
 
     for (let i = 0; i < count; i++) {
       const r = 4 + Math.random() * 5;
@@ -37,7 +85,8 @@ function ParticleField({
       base[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       base[i * 3 + 2] = r * Math.cos(phi);
 
-      if (i < ringCount) {
+      const isRing = i < ringCount;
+      if (isRing) {
         const a = (i / ringCount) * Math.PI * 2;
         const ringR = 3.1 + (Math.random() - 0.5) * 0.15;
         target[i * 3] = Math.cos(a) * ringR;
@@ -50,11 +99,15 @@ function ParticleField({
         target[i * 3 + 1] = short ? -0.3 - t * 1.2 : -0.9 + (t - 0.4) * 3.2;
         target[i * 3 + 2] = 0;
       }
-    }
-    return [base, target];
-  }, [count, includeCheckmark]);
 
-  const ashColor = useRef(DARK_ASH.clone());
+      const col = isRing ? blue : lime;
+      colors[i * 3] = col.r;
+      colors[i * 3 + 1] = col.g;
+      colors[i * 3 + 2] = col.b;
+    }
+    return [base, target, colors];
+  }, [count, ringCount]);
+
   const mouse = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -67,19 +120,28 @@ function ParticleField({
   }, []);
 
   useEffect(() => {
-    const updateThemeColors = () => {
-      const isLight =
-        document.documentElement.getAttribute("data-theme") === "light";
-      ashColor.current = isLight ? LIGHT_ASH.clone() : DARK_ASH.clone();
+    const applyThemeColors = () => {
+      const geo = pointsRef.current?.geometry;
+      if (!geo) return;
+      const attr = geo.attributes.color as THREE.BufferAttribute;
+      const arr = attr.array as Float32Array;
+      const { blue, lime } = themeColors(isLightTheme());
+      for (let i = 0; i < count; i++) {
+        const col = i < ringCount ? blue : lime;
+        arr[i * 3] = col.r;
+        arr[i * 3 + 1] = col.g;
+        arr[i * 3 + 2] = col.b;
+      }
+      attr.needsUpdate = true;
     };
-    updateThemeColors();
-    const observer = new MutationObserver(updateThemeColors);
+    applyThemeColors();
+    const observer = new MutationObserver(applyThemeColors);
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-theme"],
     });
     return () => observer.disconnect();
-  }, []);
+  }, [count, ringCount]);
 
   useFrame((state) => {
     const p = reducedMotion ? 1 : progressRef.current;
@@ -113,34 +175,82 @@ function ParticleField({
         state.clock.elapsedTime * 0.05 + parallaxX;
       pointsRef.current.rotation.x = parallaxY;
     }
-
-    if (materialRef.current) {
-      const isLight =
-        document.documentElement.getAttribute("data-theme") === "light";
-      const endColor = isLight ? LIGHT_LIME : DARK_LIME;
-      const colorProgress = THREE.MathUtils.smoothstep(p, 0.7, 1);
-      materialRef.current.color.lerpColors(
-        ashColor.current,
-        endColor,
-        colorProgress
-      );
-    }
   });
 
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[basePositions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[baseColors, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        ref={materialRef}
-        size={isMobile ? 0.055 : 0.045}
-        color={DARK_BLUE}
+        size={isMobile ? 0.06 : 0.05}
+        vertexColors
         transparent
-        opacity={0.85}
+        opacity={0.9}
         sizeAttenuation
       />
     </points>
+  );
+}
+
+function FloatingMarks({
+  reducedMotion,
+  isMobile,
+}: {
+  reducedMotion: boolean;
+  isMobile: boolean;
+}) {
+  const groupRef = useRef<THREE.Group>(null!);
+  const texture = useMemo(() => makeMarkTexture(), []);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  const marks = useMemo(() => {
+    const total = isMobile ? 3 : 6;
+    return Array.from({ length: total }, (_, i) => {
+      const angle = (i / total) * Math.PI * 2 + Math.random() * 0.6;
+      const radius = 4.2 + Math.random() * 1.6;
+      return {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius * 0.7,
+        z: -1 + Math.random() * 2,
+        scale: 0.55 + Math.random() * 0.45,
+        speed: 0.35 + Math.random() * 0.4,
+        amp: 0.25 + Math.random() * 0.35,
+        offset: Math.random() * Math.PI * 2,
+      };
+    });
+  }, [isMobile]);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    const t = state.clock.elapsedTime;
+    groupRef.current.children.forEach((child, i) => {
+      const m = marks[i];
+      child.position.y = m.y + (reducedMotion ? 0 : Math.sin(t * m.speed + m.offset) * m.amp);
+      const sprite = child as THREE.Sprite;
+      if (sprite.material) {
+        (sprite.material as THREE.SpriteMaterial).rotation = reducedMotion
+          ? 0
+          : Math.sin(t * 0.3 + m.offset) * 0.25;
+      }
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {marks.map((m, i) => (
+        <sprite key={i} position={[m.x, m.y, m.z]} scale={[m.scale, m.scale, m.scale]}>
+          <spriteMaterial
+            map={texture}
+            transparent
+            opacity={0.85}
+            depthWrite={false}
+          />
+        </sprite>
+      ))}
+    </group>
   );
 }
 
@@ -167,7 +277,7 @@ export function ControlRingCanvas({
 
   return (
     <Canvas
-      camera={{ position: [0, 0, 8], fov: 50 }}
+      camera={{ position: [0, 0, 8.5], fov: 50 }}
       dpr={dpr}
       gl={{ antialias: false, alpha: true }}
       style={{ background: "transparent" }}
@@ -177,6 +287,7 @@ export function ControlRingCanvas({
         reducedMotion={reducedMotion}
         isMobile={isMobile}
       />
+      <FloatingMarks reducedMotion={reducedMotion} isMobile={isMobile} />
     </Canvas>
   );
 }

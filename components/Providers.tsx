@@ -1,20 +1,21 @@
 "use client";
 
 import { useEffect } from "react";
-import { initLenis } from "@/lib/lenis";
+import { initLenis, destroyLenis } from "@/lib/lenis";
 import { gsap, REVEAL_EASE } from "@/lib/gsap";
 import { prefersReducedMotion } from "@/lib/motion";
 import { ThemeProvider } from "./ThemeProvider";
+import { ModalProvider } from "./ModalProvider";
 
 function SmoothScrollInit() {
   useEffect(() => {
     if (prefersReducedMotion()) return;
 
-    const lenis = initLenis();
+    initLenis();
     document.documentElement.classList.add("lenis", "lenis-smooth");
 
     return () => {
-      lenis.destroy();
+      destroyLenis();
       document.documentElement.classList.remove("lenis", "lenis-smooth");
     };
   }, []);
@@ -61,9 +62,11 @@ function ScrollRevealInit() {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
-      <SmoothScrollInit />
-      <ScrollRevealInit />
-      {children}
+      <ModalProvider>
+        <SmoothScrollInit />
+        <ScrollRevealInit />
+        {children}
+      </ModalProvider>
     </ThemeProvider>
   );
 }

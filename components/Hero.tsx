@@ -1,3 +1,5 @@
+import { CtaButton } from "./CtaButton";
+
 export function Hero() {
   return (
     <section
@@ -25,9 +27,7 @@ export function Hero() {
           </p>
 
           <div className="reveal flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <a href="#start" className="btn-primary">
-              Start a project
-            </a>
+            <CtaButton className="btn-primary">Start a project</CtaButton>
             <a href="#process" className="link-ghost">
               See how we work ↓
             </a>

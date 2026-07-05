@@ -1,3 +1,5 @@
+import { CtaButton } from "./CtaButton";
+
 export function StartProject() {
   return (
     <section id="start" className="relative z-10 section-pad">
@@ -16,9 +18,7 @@ export function StartProject() {
           </p>
 
           <div className="reveal flex flex-col items-center gap-4">
-            <a href="#start" className="btn-primary">
-              Book a call
-            </a>
+            <CtaButton className="btn-primary">Book a call</CtaButton>
             <p className="font-light text-text-secondary text-base">
               or email{" "}
               <a

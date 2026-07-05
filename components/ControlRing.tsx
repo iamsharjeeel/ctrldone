@@ -68,7 +68,7 @@ export function ControlRing() {
     <>
       <div
         ref={containerRef}
-        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-700"
+        className="control-ring-stage pointer-events-none fixed top-0 right-0 z-0 h-screen transition-opacity duration-700"
         style={{
           opacity: docked ? 0 : 1,
         }}

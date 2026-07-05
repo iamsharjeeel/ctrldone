@@ -1,6 +1,8 @@
 import Lenis from "@studio-freight/lenis";
 import { gsap, ScrollTrigger } from "./gsap";
 
+let current: Lenis | null = null;
+
 export function initLenis(): Lenis {
   const lenis = new Lenis({
     lerp: 0.1,
@@ -15,5 +17,15 @@ export function initLenis(): Lenis {
 
   gsap.ticker.lagSmoothing(0);
 
+  current = lenis;
   return lenis;
+}
+
+export function getLenis(): Lenis | null {
+  return current;
+}
+
+export function destroyLenis() {
+  current?.destroy();
+  current = null;
 }
